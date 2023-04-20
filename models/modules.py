@@ -17,18 +17,21 @@ The second sublayer includes:
     1.Point wise feed forward network
 
 The decoder includes three sublayers
+This code defines two custom Keras layers for implementing the self-attention mechanism in the Transformer model
 """
 import numpy as np
 import tensorflow as tf
 
 
 
-def postional_encoder(position, d_model):
+# 实现了 Transformer 模型中的位置编码步骤，可以让模型考虑到输入序列的顺序
+def postional_encoder(position, d_model): # position: the length of the input sequence; d_model: the dimensionality of the model
     '''
     Position encoder layer
     2i-th: sin(pos/10000^(2i/d_model))
     2i+1-th: cos(pos/10000^(2i/d_model))
     '''
+    # get_angles 计算序列中每个位置和模型中每个维度的角度速率
     def get_angles(pos, i, d_model):
         angle_rates = pos / np.power(10000, ((2 * i) / np.float32(d_model)))
         # angle_rates = 1 / np.power(10000, (2 * (i//2)) / np.float32(d_model))
@@ -37,6 +40,7 @@ def postional_encoder(position, d_model):
                            np.arange(d_model)[None, :],
                            d_model)
     # build odd and even index
+    # 使用这些角度速率来计算位置编码的正弦值和余弦值
     angle_set[:, 0::2] = np.sin(angle_set[:, 0::2]) #2i
     angle_set[:, 1::2] = np.cos(angle_set[:, 1::2]) #2i+1
     
@@ -49,7 +53,7 @@ class sublayer1(tf.keras.layers.Layer):
     '''
     This is multihead function, in order to 
     '''
-    def __init__(self, d_model, num_heads):
+    def __init__(self, d_model, num_heads): # d_model:the dimensionality of the model;num_heads: the number of attention heads to use.
         super(sublayer1, self).__init__()
         self.d_model = d_model
         self.num_heads = num_heads        
@@ -63,7 +67,7 @@ class sublayer1(tf.keras.layers.Layer):
         
         self.dense = tf.keras.layers.Dense(d_model)
         
-    def scale_dot_product_attention(self, q, k, v, mask):
+    def scale_dot_product_attention(self, q, k, v, mask): #  q:query, k:key,v:value tensors;mask:an optional mask tensor to apply to the attention weights
         '''
         softmax(Q*K^t/\sqrt(d_k))*V
         where the dimension of Q is [, seq_len_q, depth]
@@ -99,6 +103,7 @@ class sublayer1(tf.keras.layers.Layer):
     
         return outputs, attention_weights
     
+    # 可将输入张量拆分多个注意力头 将查询、键和值线性变换应用于输入张量，并将结果拆分为多个注意力头
     def split_heads(self, x):
         '''
         divide the Q, K, V into multiheads
@@ -116,6 +121,7 @@ class sublayer1(tf.keras.layers.Layer):
         # Transpose the result
         return tf.transpose(x, [0, 2, 1, 3])
     
+    # 可将输入张量组合成多个注意力头 
     def combined_heads(self, x):
         '''
         combined multi heads
